@@ -37,7 +37,7 @@ jobs:
         working-directory: app
         run: |
           pip install --upgrade pip
-          pip install fastapi uvicorn pydantic shap scikit-learn pandas numpy pymongo requests httpx pytest
+          pip install fastapi uvicorn pydantic shap scikit-learn pandas numpy pymongo requests httpx pytest mlflow
 
       - name: Train model for tests
         working-directory: app
@@ -45,7 +45,7 @@ jobs:
 
       - name: Run unit tests
         working-directory: app
-        run: pytest tests/test_main.py -v
+        run: pytest tests/test_main.py -v --override-ini="python_files=test_*.py"
 
   build-and-push:
     name: Build and Push Docker Image
