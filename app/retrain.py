@@ -5,7 +5,7 @@ from sklearn.ensemble import RandomForestClassifier
 
 warnings.filterwarnings('ignore')
 
-df = pd.read_csv('data/data.csv')
+df = pd.read_csv('../data/data.csv')
 X = df[['Age', 'SystolicBP', 'DiastolicBP', 'BS', 'BodyTemp', 'HeartRate']]
 y = df['RiskLevel'].map({'high risk': 0, 'low risk': 1, 'mid risk': 2})
 
