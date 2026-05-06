@@ -18,7 +18,7 @@ services:
     expose:
       - "5432"
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:5433:5432"
     volumes:
       - "mlflow-db-data:/var/lib/postgresql/"
 
@@ -102,7 +102,7 @@ services:
     depends_on:
       - prometheus
     ports:
-      - "127.0.0.1:3000:3000"
+      - "127.0.0.1:3001:3000"
     volumes:
       - ./monitoring/config/grafana_datasources.yaml:/etc/grafana/provisioning/datasources/datasource.yaml:ro
       - ./monitoring/config/grafana_dashboards.yaml:/etc/grafana/provisioning/dashboards/dashboards.yaml:ro
@@ -135,12 +135,14 @@ services:
       dockerfile: Dockerfile
     image: peco602/maternal-health-risk-predictor:latest
     container_name: web-app
+    volumes:
+      - ./data:/app/data
     environment:
       AWS_REGION: ${AWS_REGION}
       AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
-      MLFLOW_ENABLED: "True"
+      MLFLOW_ENABLED: "False"
       MLFLOW_TRACKING_URI: http://mlflow-server:5000
       DEFAULT_MODEL_ENABLED: ${DEFAULT_MODEL_ENABLED}
       MLFLOW_S3_ENDPOINT_URL: http://minio:9000
@@ -150,7 +152,7 @@ services:
       EXPERIMENT_NAME: ${EXPERIMENT_NAME}
       MIN_AGE: ${MIN_AGE}
       MAX_AGE: ${MAX_AGE}
-    command: "gunicorn --bind=0.0.0.0:8081 predict:app"
+    command: "uvicorn main:app --host 0.0.0.0 --port 8081"
     expose:
       - "8081"
     ports:

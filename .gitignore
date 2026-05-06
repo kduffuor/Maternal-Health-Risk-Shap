@@ -166,3 +166,6 @@ main-deployment.yaml
 
 # Backup training data
 data-*.csv
+app/model.bin
+__pycache__/
+*.pyc

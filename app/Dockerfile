@@ -7,8 +7,9 @@ WORKDIR /app
 
 COPY [ "Pipfile", "Pipfile.lock", "./" ]
 
-RUN pipenv install --system --deploy
+RUN pipenv install --system --skip-lock
 
 COPY [ "model.bin", "*.py", "./" ]
 ADD ["static", "./static"]
 ADD ["templates", "./templates"]
+ADD ["tests", "./tests"]
