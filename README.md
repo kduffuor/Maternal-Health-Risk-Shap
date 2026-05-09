@@ -1,196 +1,293 @@
 # Maternal Health Risk Predictor
 
+![CI/CD Pipeline](https://github.com/kduffuor/Maternal-Health-Risk-Shap/actions/workflows/main.yml/badge.svg)
+![Python](https://img.shields.io/badge/python-3.9-blue.svg)
+![Docker](https://img.shields.io/badge/docker-28.0-blue.svg)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-green.svg)
+
 ## Objective
 
-This repository contains the final project for the [MLOps Zoomcamp](https://github.com/DataTalksClub/mlops-zoomcamp) course provided by [DataTalks.Club](https://datatalks.club/).
-
+This repository contains an MLOps pipeline for maternal health risk prediction during pregnancy. It extends the original pipeline provided by [Peco602](https://github.com/Peco602/maternal-health-risk) with three key contributions: a FastAPI prediction service replacing the original Flask app, SHAP explainability integrated into every prediction response, and a fully automated CI/CD pipeline via GitHub Actions.
 
 ## Context
 
 According to the World Health Organization (WHO):
 
-"*Maternal health refers to the health of women during pregnancy, childbirth and the post-natal period. Each stage should be a positive experience, ensuring women and their babies reach their full potential for health and well-being. Although important progress has been made in the last two decades, about 295 000 women died during and following pregnancy and childbirth in 2017. This number is unacceptably high. The most common direct causes of maternal injury and death are excessive blood loss, infection, high blood pressure, unsafe abortion, and obstructed labour, as well as indirect causes such as anemia, malaria, and heart disease. Most maternal deaths are preventable with timely management by a skilled health professional working in a supportive environment. Ending preventable maternal death must remain at the top of the global agenda. At the same time, simply surviving pregnancy and childbirth can never be the marker of successful maternal health care. It is critical to expand efforts reducing maternal injury and disability to promote health and well-being. Every pregnancy and birth is unique. Addressing inequalities that affect health outcomes, especially sexual and reproductive health and rights and gender, is fundamental to ensuring all women have access to respectful and high-quality maternity care.*"
+> "*Maternal health refers to the health of women during pregnancy, childbirth and the post-natal period. Each stage should be a positive experience, ensuring women and their babies reach their full potential for health and well-being. Although important progress has been made in the last two decades, about 295 000 women died during and following pregnancy and childbirth in 2017. This number is unacceptably high.*"
 
-The goal of the project is to apply what has been learned during the MLOps Zoomcamp course to build a MLOps pipeline for woman health risk prediction during pregnancy. 
-
+The goal of this project is to build a production-ready MLOps pipeline that not only predicts maternal health risk but also explains which patient features drove each prediction – making the model interpretable for clinical use.
 
 ## Dataset
 
-The dataset used to feed the MLOps pipeline has been downloaded from [Kaggle](https://www.kaggle.com/datasets/pyuxbhatt/maternal-health-risk) and contains data collected from several hospitals, community clinics and maternal health cares through an IoT-based risk monitoring system. The dataset is updated daily and is characterized by the following features:
+The dataset is sourced from [Kaggle](https://www.kaggle.com/datasets/pyuxbhatt/maternal-health-risk) and contains data collected from hospitals, community clinics, and maternal health care centers through an IoT-based risk monitoring system.
 
 | Feature | Description |
-| --- | --- |
-| Age | Age when a woman is pregnant. |
-| SystolicBP | Upper value of blood pressure. |
-| DiastolicBP | Lower value of blood pressure. |
-| BS | Blood glucose levels in terms of molar concentration. |
-| HeartRate | A normal resting heart rate. |
-| BodyTemp | Average human body temperature. |
-| Risk Level | Predicted risk intensity level during pregnancy considering the previous attributes. |
+|---------|-------------|
+| Age | Age of the woman during pregnancy |
+| SystolicBP | Upper value of blood pressure in mmHg |
+| DiastolicBP | Lower value of blood pressure in mmHg |
+| BS | Blood glucose level in mmol/L |
+| BodyTemp | Body temperature in Celsius |
+| HeartRate | Resting heart rate in bpm |
+| RiskLevel | Predicted risk level: low risk, mid risk, high risk |
 
+## What This Version Adds Over the Original
 
-## MLOps pipeline
+| Feature | Original (Peco602) | This Version |
+|---------|-------------------|--------------|
+| Web framework | Flask | FastAPI |
+| API documentation | None | Auto-generated Swagger UI at `/docs` |
+| Input validation | Manual function | Pydantic models with automatic 422 errors |
+| Explainability | None | SHAP TreeExplainer on every prediction |
+| Clinical interpretation | None | Plain language risk drivers per prediction |
+| Unit tests | Flask-based tests | 24 pytest tests across 5 test classes |
+| CI/CD | GitHub Actions + SSH deploy | GitHub Actions + Docker Hub push |
+| Server | Gunicorn | Uvicorn |
 
-### Architecture
+## API Response
 
-<img src="images/architecture.png" width="100%"/>
+Every prediction request returns three layers – a risk label, raw SHAP values for engineers, and a plain language clinical interpretation for clinicians:
 
-
-### Deployment
-
-The MLOps pipeline is fully dockerised and can be easily deployed via the following steps:
-
-1. Clone the `maternal-health-risk` repository locally:
-
-    ```bash
-    $ git clone https://github.com/Peco602/maternal-health-risk.git
-    ```
-
-2. Install the pre-requisites necessary to run the pipeline:
-
-    ```bash
-    $ cd maternal-health-risk
-    $ sudo apt install make
-    $ make prerequisites
-    ```
-
-    It is also suggested to add the current user to the `docker` group to avoid running the next steps as `sudo`:
-
-    ```bash
-    $ sudo groupadd docker
-    $ sudo usermod -aG docker $USER
-    ```
-
-    then, logout and log back in so that the group membership is re-evaluated.
-
-3. [*Optional*] Configure the development evironment:
-
-    ```bash
-    $ make setup
-    ```
-
-    This is required to perform further development and testing on the pipeline.
-
-4. [*Optional*] Insert Kaggle credentials in the `.env` file to allow the automatic scheduled dataset update:
-
-    ```bash
-    # Kaggle credentials
-    KAGGLE_USERNAME=*****
-    KAGGLE_KEY=*****
-    ```
-
-    In case the credentials are not available, the training dataset `data/data.csv` must be updated manually.
-
-5. Pull the Docker images:
-
-    ```
-    $ make pull
-    ```
-
-6. Launch the MLOps pipeline:
-
-    ```
-    $ make run
-    ```
-
-    Once ready, the following services will be available:
-
-    | Service | Port | Interface | Description |
-    | --- | --- | --- | --- |
-    | Web Application | 80 | 0.0.0.0 | Prediction web service (see picture below) |
-    | Prefect | 4200 | 127.0.0.1 | Training workflow orchestration |
-    | MLFlow | 5000 | 127.0.0.1 | Experiment tracking and model registry |
-    | MinIO | 9001 | 127.0.0.1 | S3-equivalent bucket management |
-    | Evidently | 8085 | 127.0.0.1 | Data and target drift report generation (`/dashboard` route) |
-    | Grafana | 3000 | 127.0.0.1 | Data and target drift real-time dashboards |
-
-
-    <img src="images/webservice.png" width="100%"/>
-
-
-### Training
-
-Once the MLOps pipeline has been started, the prediction web service can already work thanks to a default pre-trained model available in the Docker image. In order to enable pipeline training workflow it is necessary to create a scheduled Prefect deployment via:
-
-```
-$ make deployment
+```json
+{
+  "RiskLevel": "high risk",
+  "explanation": {
+    "BS": 0.1823,
+    "SystolicBP": 0.1204,
+    "Age": 0.0891,
+    "DiastolicBP": -0.0423,
+    "HeartRate": -0.0187,
+    "BodyTemp": -0.0091
+  },
+  "interpretation": {
+    "increasing_risk": [
+      "Blood glucose is in diabetic range (10.0 mmol/L)",
+      "Systolic blood pressure is in hypertensive range (160 mmHg)",
+      "Age is advanced maternal age (45 years)"
+    ],
+    "decreasing_risk": [
+      "Heart rate is within normal range (70 bpm)",
+      "Body temperature is within normal range (38.0 Celsius)"
+    ],
+    "summary": "Risk is primarily driven by blood glucose in diabetic range (10.0 mmol/L)."
+  }
+}
 ```
 
-The training workflow will be then automatically executed every day. It will download the latest dataset (if the Kaggle credentials have been provided), search the best model in terms of accuracy among XGBoost, Support Vector Machine and Random Forest and finally will store it in the model registry. It is worth noting the training workflow can also be immediately executed without waiting the next schedule:
+The three layers serve different audiences:
+
+| Layer | Field | Audience |
+|-------|-------|----------|
+| Risk label | `RiskLevel` | All users |
+| Raw SHAP values | `explanation` | Engineers and researchers |
+| Plain language drivers | `interpretation` | Clinicians and patients |
+
+## Architecture
+
+The full local MLOps pipeline runs via Docker Compose and includes 10 services:
+
+![Architecture](images/architecture.png)
+
+| Service | Port | Description |
+|---------|------|-------------|
+| Web Application | 80 | FastAPI prediction service with SHAP |
+| MLflow | 5000 | Experiment tracking and model registry |
+| Prefect | 4200 | Training workflow orchestration |
+| MinIO | 9001 | S3-compatible model artifact storage |
+| MongoDB | 27017 | Prediction logging database |
+| Evidently | 8085 | Data and target drift monitoring |
+| Grafana | 3001 | Real-time monitoring dashboards |
+| Prometheus | 9090 | Time-series metrics database |
+| PostgreSQL | 5433 | MLflow backend database |
+
+## Local Setup
+
+### Prerequisites
+
+- Docker Desktop installed and running
+- Git Bash or any terminal
+
+### Steps
+
+**1. Clone the repository:**
+
+```bash
+git clone https://github.com/kduffuor/Maternal-Health-Risk-Shap.git
+cd Maternal-Health-Risk-Shap
+```
+
+**2. Pull all Docker images:**
+
+```bash
+docker compose pull
+```
+
+**3. Start the full pipeline:**
+
+```bash
+docker compose up -d
+```
+
+**4. Train the default model:**
+
+```bash
+docker compose exec web-app python3 retrain.py
+docker compose restart web-app
+```
+
+**5. Access the services:**
+
+| Service | URL |
+|---------|-----|
+| API | http://localhost |
+| API Docs | http://localhost/docs |
+| MLflow | http://localhost:5000 |
+| MinIO | http://localhost:9001 (admin / adminadmin) |
+| Prefect | http://localhost:4200 |
+| Grafana | http://localhost:3001 (admin / admin) |
+| Evidently | http://localhost:8085/dashboard |
+| Prometheus | http://localhost:9090 |
+
+### Port Conflicts on Windows
+
+If you encounter port conflicts on Windows, update the following in `docker-compose.yml`:
+
+| Service | Default | Alternative |
+|---------|---------|-------------|
+| PostgreSQL | 5432 | 5433 |
+| Grafana | 3000 | 3001 |
+
+## Using the API
+
+### Via Swagger UI
+
+Go to `http://localhost/docs`, click `POST /predict`, then `Try it out` and submit patient data.
+
+### Via curl
+
+```bash
+curl -X POST "http://localhost/predict" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "Age": 25,
+    "SystolicBP": 130,
+    "DiastolicBP": 80,
+    "BS": 7.5,
+    "BodyTemp": 37.0,
+    "HeartRate": 80
+  }'
+```
+
+### Via Docker Hub
+
+```bash
+docker pull kduffuor/maternal-health-risk-shap:latest
+```
+
+## Running Tests
+
+```bash
+docker compose exec web-app pip install pytest httpx
+docker compose exec web-app python3 -m pytest tests/test_main.py -v
+```
+
+The test suite covers 24 tests across 5 classes:
+
+| Class | Tests | Coverage |
+|-------|-------|----------|
+| TestInputValidation | 9 | Field ranges, cross-field BP validation |
+| TestPredictionEndpoint | 5 | HTTP status, response structure, error handling |
+| TestSHAPExplanation | 3 | Explanation structure, numeric values, all risk levels |
+| TestHealthEndpoint | 3 | Health check status and model load confirmation |
+| TestInterpretation | 4 | Interpretation structure, required keys, data types |
+
+## CI/CD Pipeline
+
+Every push to `main` triggers the GitHub Actions pipeline automatically:
 
 ```
-$ make train
+Push to main
+     ↓
+Run 24 pytest tests
+     ↓
+Tests pass → Build Docker image
+     ↓
+Push to Docker Hub (kduffuor/maternal-health-risk-shap)
 ```
 
-Once the updated model is ready, it can be moved to production by restarting the pipeline:
+The pipeline will not push a broken image. If any test fails the build step is skipped entirely.
 
-```
-$ make restart
-```
+## Model Training
 
-the web service will automatically connect to the registry and get the most updated model. If the model is still not available, it will continue to use the default one.
+The default model is a Random Forest Classifier trained on the maternal health dataset. To retrain inside the running container:
 
-
-### Monitoring
-
-It is possible to generate simulated traffic via:
-
-```
-$ make generate-traffic
+```bash
+docker compose exec web-app python3 retrain.py
+docker compose restart web-app
 ```
 
-Then, the prediction service can be monitored via:
+For scheduled automated retraining using the full Prefect pipeline:
 
-- Grafana (in real-time): `http://127.0.0.1:3000`
-- Evidently (for report generation): `http://127.0.0.1:8085/dashboard`
-
-
-### Disposal
-
-The MLOps pipeline can be disposed via:
-
-```
-$ make kill
+```bash
+docker compose exec prefect python train.py
 ```
 
-while the Docker volumes used for persistence can be removed via:
+## Project Structure
 
 ```
-$ make clean
+Maternal-Health-Risk-Shap/
+├── .github/
+│   └── workflows/
+│       └── main.yml              # CI/CD pipeline
+├── app/
+│   ├── main.py                   # FastAPI app with SHAP and clinical interpretation
+│   ├── retrain.py                # Model retraining script
+│   ├── train.py                  # Prefect training pipeline
+│   ├── Dockerfile                # Container build instructions
+│   ├── Pipfile                   # Python dependencies
+│   └── tests/
+│       └── test_main.py          # 24 pytest unit tests
+├── data/
+│   └── data.csv                  # Maternal health dataset
+├── monitoring/                   # Grafana, Prometheus, Evidently config
+├── docker-compose.yml            # Full 10-service stack definition
+└── README.md
 ```
 
-
-## GitHub Actions
-
-- **Continuous Integration**: On every push and pull request on `main` and `dev` branches, the Docker images are built, tested and then pushed to DockerHub.
-- **Continuous Deployment**: On every push and pull request on `main` branch, only if the Continuous Integration workflow has been successful successful, the updated pipeline is deployed to the target server and run.
-
-
-## Applied technologies
+## Applied Technologies
 
 | Name | Scope |
-| --- | --- |
-| Jupyter Notebooks | Exploratory data analysis and pipeline prototyping. |
-| Docker | Application containerization. |
-| Docker-Compose | Multi-container Docker applications definition and running. |
-| Prefect | Workflow orchestration. |
-| MLFlow | Experiment tracking and model registry. |
-| PostgreSQL | MLFLow experiment tracking database. |
-| MinIO | High Performance Object Storage compatible with Amazon S3 cloud storage service. |
-| Flask | Web server. |
-| Bootstrap | Frontend toolkit. |
-| MongoDB | Prediction database. |
-| EvidentlyAI | ML models evaluation and monitoring. |
-| Prometheus | Time Series Database for ML models real-time monitoring. |
-| Grafana | ML models real-time monitoring dashboards. |
-| pytest | Python unit testing suite. |
-| pylint | Python static code analysis. |
-| black | Python code formatting. |
-| isort | Python import sorting. |
-| Pre-Commit Hooks | Simple code issue identification before submission. |
-| GitHub Actions | CI/CD pipelines. |
+|------|-------|
+| FastAPI | Prediction API server |
+| Uvicorn | ASGI server for FastAPI |
+| Pydantic | Input validation and schema definition |
+| SHAP | Model explainability via TreeExplainer |
+| scikit-learn | Random Forest classifier |
+| XGBoost | Alternative model via Prefect training pipeline |
+| Docker | Application containerization |
+| Docker Compose | Multi-container orchestration |
+| MLflow | Experiment tracking and model registry |
+| Prefect | Training workflow orchestration |
+| MinIO | S3-compatible artifact storage |
+| MongoDB | Prediction logging |
+| EvidentlyAI | Data and target drift monitoring |
+| Prometheus | Time-series metrics |
+| Grafana | Real-time monitoring dashboards |
+| pytest | Unit testing |
+| GitHub Actions | CI/CD pipeline |
+| Docker Hub | Container image registry |
 
+## Future Work
+
+- **Calibrated risk probabilities** – Apply Platt scaling or isotonic regression to produce clinically defensible absolute risk percentages alongside the current classification output
+- **Patient-facing UI** – A web interface that renders the interpretation layer in plain language with visual risk indicators
+- **Clinical threshold validation** – Collaborate with maternal health clinicians to validate and refine the reference ranges used in the interpretation layer
+- **Drift monitoring in production** – Extend Evidently and Grafana monitoring to the deployed Render service
 
 ## Disclaimer
 
-This prediction service has been developed as the final project of the MLOps Zoomcamp course from DataTalks.Club. It does not provide medical advice and it is intended for informational purposes only. It cannot be considered a substitute for professional medical advice, diagnosis or treatment. Never ignore professional medical advice in seeking treatment because of something you have read here.
+This prediction service is intended for research and educational purposes only. It does not provide medical advice and cannot be used as a substitute for professional medical diagnosis or treatment. Never disregard professional medical advice because of something you have read here.
+
+## Acknowledgements
+
+Original MLOps pipeline by [Peco602](https://github.com/Peco602/maternal-health-risk), built as part of the MLOps Zoomcamp course by [DataTalks.Club](https://datatalks.club/). This version extends the original with FastAPI, SHAP explainability, clinically grounded interpretation, updated CI/CD, and a comprehensive pytest test suite.
