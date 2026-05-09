@@ -124,10 +124,11 @@ def calculate_risk(record: dict):
     pred = predict(record)
     risk = convert_risk(pred)
     explanation = explain_prediction(record, pred)
+    interpretation = interpret_prediction(record, explanation)
     if MONITORING_ENABLED:
         save_to_db(record, risk)
         send_to_evidently_service(record, risk)
-    return risk, explanation
+    return risk, explanation, interpretation
 
 
 FEATURE_NAMES = ['Age', 'SystolicBP', 'DiastolicBP', 'BS', 'BodyTemp', 'HeartRate']
@@ -148,6 +149,153 @@ def explain_prediction(record: dict, pred: int):
         sorted(explanation.items(), key=lambda x: abs(x[1]), reverse=True)
     )
     return explanation
+
+
+def interpret_prediction(record: dict, explanation: dict):
+    """
+    Converts raw SHAP values and actual feature values into
+    clinically grounded plain language interpretation.
+    Uses actual feature value against clinical thresholds
+    combined with SHAP sign — not raw magnitude alone.
+    """
+    increasing = []
+    decreasing = []
+
+    for feature, shap_value in explanation.items():
+        value = record[feature]
+        thresh = CLINICAL_THRESHOLDS.get(feature)
+        display = FEATURE_DISPLAY_NAMES.get(feature, feature)
+
+        if thresh is None:
+            continue
+
+        # Determine clinical status from actual value
+        if feature == "SystolicBP":
+            if value >= thresh["high"]:
+                status = thresh["high_label"]
+            elif value >= thresh.get("elevated_max", thresh["normal_max"]):
+                status = thresh.get("elevated_label", "elevated range")
+            elif value < thresh["low"]:
+                status = thresh["low_label"]
+            else:
+                status = "within normal range"
+
+        elif feature == "BS":
+            if value >= thresh["high"]:
+                status = thresh["high_label"]
+            elif value >= thresh.get("elevated_max", thresh["normal_max"]):
+                status = thresh.get("elevated_label", "elevated range")
+            elif value < thresh["low"]:
+                status = thresh["low_label"]
+            else:
+                status = "within normal range"
+
+        elif feature == "Age":
+            if value > thresh["normal_max"]:
+                status = thresh["high_label"]
+            elif value <= thresh["low"] + 2:
+                status = thresh["low_label"]
+            else:
+                status = "within normal range"
+
+        else:
+            if value > thresh["normal_max"]:
+                status = thresh["high_label"]
+            elif value < thresh["low"]:
+                status = thresh["low_label"]
+            else:
+                status = "within normal range"
+
+        # Use SHAP sign to determine direction of effect
+        if shap_value > 0:
+            increasing.append(
+                f"{display} is {status} ({value} {thresh['unit']})"
+            )
+        elif shap_value < 0:
+            decreasing.append(
+                f"{display} is {status} ({value} {thresh['unit']})"
+            )
+
+    # Build summary from top increasing driver
+    if increasing:
+        top = increasing[0]
+        summary = f"Risk is primarily driven by {top.lower()}."
+    else:
+        summary = "No single dominant risk factor identified."
+
+    return {
+        "increasing_risk": increasing,
+        "decreasing_risk": decreasing,
+        "summary": summary
+    }
+
+
+# Clinical reference ranges for interpretation
+# Sources: WHO maternal health guidelines and standard clinical ranges
+CLINICAL_THRESHOLDS = {
+    "Age": {
+        "low": 13,
+        "normal_max": 35,
+        "high": 50,
+        "unit": "years",
+        "low_label": "adolescent pregnancy",
+        "high_label": "advanced maternal age"
+    },
+    "SystolicBP": {
+        "low": 90,
+        "normal_max": 120,
+        "elevated_max": 129,
+        "high": 130,
+        "unit": "mmHg",
+        "low_label": "hypotensive range",
+        "elevated_label": "elevated range",
+        "high_label": "hypertensive range"
+    },
+    "DiastolicBP": {
+        "low": 60,
+        "normal_max": 80,
+        "high": 90,
+        "unit": "mmHg",
+        "low_label": "hypotensive range",
+        "high_label": "hypertensive range"
+    },
+    "BS": {
+        "low": 0.1,
+        "normal_max": 6.1,
+        "elevated_max": 7.8,
+        "high": 7.8,
+        "unit": "mmol/L",
+        "low_label": "hypoglycemic range",
+        "elevated_label": "pre-diabetic range",
+        "high_label": "diabetic range"
+    },
+    "BodyTemp": {
+        "low": 36.0,
+        "normal_max": 37.5,
+        "high": 37.5,
+        "unit": "Celsius",
+        "low_label": "below normal range",
+        "high_label": "febrile range"
+    },
+    "HeartRate": {
+        "low": 60,
+        "normal_max": 100,
+        "high": 100,
+        "unit": "bpm",
+        "low_label": "bradycardic range",
+        "high_label": "tachycardic range"
+    }
+}
+
+FEATURE_DISPLAY_NAMES = {
+    "Age": "Age",
+    "SystolicBP": "Systolic blood pressure",
+    "DiastolicBP": "Diastolic blood pressure",
+    "BS": "Blood glucose",
+    "BodyTemp": "Body temperature",
+    "HeartRate": "Heart rate"
+}
+
 
 # -------------------------------------------------------------------
 # FastAPI app
@@ -181,13 +329,14 @@ def root():
 def predict_endpoint(patient: PatientData):
     """
     Accepts patient vitals and returns maternal health risk level
-    with SHAP feature contribution explanation.
+    with SHAP feature contributions and clinical interpretation.
     """
     record = patient.model_dump()
-    risk, explanation = calculate_risk(record)
+    risk, explanation, interpretation = calculate_risk(record)
     return {
         "RiskLevel": risk,
-        "explanation": explanation
+        "explanation": explanation,
+        "interpretation": interpretation
     }
 
 

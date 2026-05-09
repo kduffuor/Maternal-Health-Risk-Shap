@@ -175,3 +175,36 @@ class TestHealthEndpoint:
         """Health endpoint should show status as healthy"""
         response = client.get("/health")
         assert response.json()["status"] == "healthy"
+
+
+# -------------------------------------------------------------------
+# Test 5 — Interpretation structure
+# -------------------------------------------------------------------
+class TestInterpretation:
+
+    def test_interpretation_present_in_response(self):
+        """Response must contain interpretation field"""
+        response = client.post("/predict", json=VALID_LOW_RISK)
+        assert "interpretation" in response.json()
+
+    def test_interpretation_has_required_keys(self):
+        """Interpretation must have increasing_risk, decreasing_risk, summary"""
+        response = client.post("/predict", json=VALID_LOW_RISK)
+        interp = response.json()["interpretation"]
+        assert "increasing_risk" in interp
+        assert "decreasing_risk" in interp
+        assert "summary" in interp
+
+    def test_interpretation_summary_is_string(self):
+        """Summary must be a non-empty string"""
+        response = client.post("/predict", json=VALID_LOW_RISK)
+        summary = response.json()["interpretation"]["summary"]
+        assert isinstance(summary, str)
+        assert len(summary) > 0
+
+    def test_interpretation_lists_are_lists(self):
+        """increasing_risk and decreasing_risk must be lists"""
+        response = client.post("/predict", json=VALID_HIGH_RISK)
+        interp = response.json()["interpretation"]
+        assert isinstance(interp["increasing_risk"], list)
+        assert isinstance(interp["decreasing_risk"], list)
