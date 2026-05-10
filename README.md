@@ -9,6 +9,14 @@
 
 This repository contains an MLOps pipeline for maternal health risk prediction during pregnancy. It extends the original pipeline provided by [Peco602](https://github.com/Peco602/maternal-health-risk) with three key contributions: a FastAPI prediction service replacing the original Flask app, SHAP explainability integrated into every prediction response, and a fully automated CI/CD pipeline via GitHub Actions.
 
+## Live Demo
+
+| Link | Description |
+|------|-------------|
+| [Clinical Frontend](https://kduffuor.github.io/Maternal-Health-Risk-Shap) | Web interface for clinicians and patients |
+| [API Documentation](https://maternal-health-risk-shap.onrender.com/docs) | Swagger UI — interactive API docs |
+| [Live API](https://maternal-health-risk-shap.onrender.com) | REST endpoint for programmatic access |
+
 ## Context
 
 According to the World Health Organization (WHO):
@@ -136,6 +144,8 @@ docker compose restart web-app
 ```
 
 **5. Access the services:**
+
+> Note: The frontend at `https://kduffuor.github.io/Maternal-Health-Risk-Shap` calls the live Render API directly. No local setup is needed to use the web interface.
 
 | Service | URL |
 |---------|-----|
