@@ -260,6 +260,7 @@ Maternal-Health-Risk-Shap/
 ├── data/
 │   └── data.csv                  # Maternal health dataset
 ├── monitoring/                   # Grafana, Prometheus, Evidently config
+├── index.html                    # Clinical frontend – hosted on GitHub Pages
 ├── docker-compose.yml            # Full 10-service stack definition
 └── README.md
 ```
