@@ -5,11 +5,12 @@ RUN pip install pipenv
 
 WORKDIR /app
 
-COPY [ "Pipfile", "Pipfile.lock", "./" ]
-
+COPY ["Pipfile", "Pipfile.lock", "./"]
 RUN pipenv install --system --skip-lock
 
-COPY [ "model.bin", "*.py", "./" ]
+COPY ["*.py", "./"]
 ADD ["static", "./static"]
 ADD ["templates", "./templates"]
 ADD ["tests", "./tests"]
+COPY ["data/data.csv", "./data/data.csv"]
+RUN python retrain.py
