@@ -10,3 +10,4 @@ ADD ["app/templates", "./templates"]
 ADD ["app/tests", "./tests"]
 COPY ["data/data.csv", "./data/data.csv"]
 RUN python retrain.py
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
