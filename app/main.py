@@ -8,6 +8,7 @@ import pandas as pd
 import requests
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, validator
 from pymongo import MongoClient
 
@@ -304,6 +305,17 @@ app = FastAPI(
     title="Maternal Health Risk Predictor",
     description="Predicts maternal health risk level based on patient vitals. Returns SHAP feature contributions and clinical interpretation per prediction.",
     version="1.0.0"
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://kduffuor.github.io",
+        "http://localhost",
+        "http://127.0.0.1"
+    ],
+    allow_methods=["POST", "GET"],
+    allow_headers=["Content-Type"],
 )
 
 model = load_model()
