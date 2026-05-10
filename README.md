@@ -48,9 +48,11 @@ The dataset is sourced from [Kaggle](https://www.kaggle.com/datasets/pyuxbhatt/m
 | Input validation | Manual function | Pydantic models with automatic 422 errors |
 | Explainability | None | SHAP TreeExplainer on every prediction |
 | Clinical interpretation | None | Plain language risk drivers per prediction |
+| Frontend | Flask HTML template | Standalone clinical web app on GitHub Pages |
 | Unit tests | Flask-based tests | 24 pytest tests across 5 test classes |
 | CI/CD | GitHub Actions + SSH deploy | GitHub Actions + Docker Hub push |
 | Server | Gunicorn | Uvicorn |
+| Public URL | None | Live on Render.com |
 
 ## API Response
 
