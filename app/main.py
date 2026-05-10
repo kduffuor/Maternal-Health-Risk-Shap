@@ -302,7 +302,7 @@ FEATURE_DISPLAY_NAMES = {
 # -------------------------------------------------------------------
 app = FastAPI(
     title="Maternal Health Risk Predictor",
-    description="Predicts maternal health risk level based on patient vitals. SHAP explainability coming in v2.",
+    description="Predicts maternal health risk level based on patient vitals. Returns SHAP feature contributions and clinical interpretation per prediction.",
     version="1.0.0"
 )
 
